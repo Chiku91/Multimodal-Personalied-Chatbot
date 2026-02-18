@@ -1,0 +1,11 @@
+digraph concept_graph {
+rankdir=TB;
+Cache [label="fast access"];
+Main_Memory [label="frequent access"];
+Register [label="fillcolor="#FF9900""];
+Secondary_Storage [label="less frequent access"];
+node [label="shape=box, style=filled"];
+Cache -> Main_Memory;
+Main_Memory -> Secondary_Storage;
+Register -> Cache;
+}

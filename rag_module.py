@@ -4,7 +4,7 @@ import numpy as np
 import faiss
 from typing import List
 from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from groq import Groq
 from dotenv import load_dotenv
 import os

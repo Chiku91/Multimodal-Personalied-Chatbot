@@ -1,20 +1,26 @@
-import fitz  # PyMuPDF
+import fitz
 import docx
 import numpy as np
 import faiss
 from typing import List
 from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from groq import Groq
 import os
 import streamlit as st
 
+api_key = os.getenv("GROQ_API_KEY")
 
-api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
+if not api_key:
+    try:
+        api_key = st.secrets["GROQ_API_KEY"]
+    except Exception:
+        api_key = None
+
 groq_client = Groq(api_key=api_key)
 
-
 embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+
 
 def extract_text(file_path: str) -> str:
     if file_path.endswith(".pdf"):
@@ -40,11 +46,13 @@ def split_text(text: str) -> List[str]:
     )
     return splitter.split_text(text)
 
+
 def create_vector_store(chunks: List[str]):
     embeddings = embed_model.encode(chunks)
     index = faiss.IndexFlatL2(embeddings.shape[1])
     index.add(np.array(embeddings))
     return {"index": index, "chunks": chunks}
+
 
 def get_relevant_chunks(query: str, vector_store, top_k: int = 5) -> List[str]:
     query_vec = embed_model.encode([query])
@@ -63,12 +71,13 @@ def keyword_search(query: str, chunks: List[str], top_k=5):
     ranked = sorted(zip(chunks, scores), key=lambda x: x[1], reverse=True)
     return [c for c, _ in ranked[:top_k]]
 
+
 def hybrid_retrieval(query, vector_store, chunks, top_k=5):
     semantic = get_relevant_chunks(query, vector_store, top_k)
     keyword = keyword_search(query, chunks, top_k)
-
     combined = list(dict.fromkeys(semantic + keyword))
     return combined[:top_k]
+
 
 def generate_query_variants(query: str) -> List[str]:
     prompt = f"""
@@ -86,6 +95,7 @@ Only output the queries, one per line.
     variants = [q.strip() for q in text.split("\n") if q.strip()]
 
     return [query] + variants
+
 
 def advanced_retrieval(query, vector_store, chunks):
     variants = generate_query_variants(query)
@@ -114,8 +124,6 @@ def answer_query_with_context(query: str, context_chunks: List[str]) -> str:
     context = "\n".join(context_chunks)
 
     prompt = f"""
-You are an AI tutor.
-
 Use ONLY the context below to answer.
 
 Context:
@@ -124,7 +132,7 @@ Context:
 Question:
 {query}
 
-Answer clearly and concisely.
+Answer clearly.
 """
 
     return query_groq(prompt)
